@@ -6,7 +6,6 @@ using Shared.Target;
 using ArchB.Monolith;
 
 var builder = Host.CreateApplicationBuilder(args);
-builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 
 builder.Services.AddSingleton<DataAccess>();
 builder.Services.AddSingleton<MetricOrchestrator>();
@@ -35,5 +34,3 @@ var orchestrator = host.Services.GetRequiredService<MetricOrchestrator>();
 var success = await orchestrator.RunAsync();
 
 return success ? 0 : 1;
-
-public partial class Program;
