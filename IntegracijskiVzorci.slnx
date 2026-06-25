@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Shared.Tests/Shared.Tests.csproj" />
+  <Project Path="Shared/Shared.csproj" />
+</Solution>
