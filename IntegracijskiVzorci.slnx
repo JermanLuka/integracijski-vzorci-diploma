@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="ArchB.Monolith/ArchB.Monolith.csproj" />
+  <Project Path="ArchB.Monolith.Tests/ArchB.Monolith.Tests.csproj" />
   <Project Path="Shared.Tests/Shared.Tests.csproj" />
   <Project Path="Shared/Shared.csproj" />
 </Solution>
