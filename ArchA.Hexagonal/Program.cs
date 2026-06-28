@@ -2,17 +2,20 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ArchA.Hexagonal.Adapters;
+using ArchA.Hexagonal.Core;
 using Shared.Target;
-using ArchB.Monolith;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.SetBasePath(AppContext.BaseDirectory);
 builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 
-builder.Services.AddSingleton<DataAccess>();
-builder.Services.AddSingleton<MetricOrchestrator>();
+// Register source adapters (input ports)
+builder.Services.AddSingleton<IMetricSource, GitHubAdapter>();
+builder.Services.AddSingleton<IMetricSource, StackOverflowAdapter>();
+builder.Services.AddSingleton<IMetricSource, WorldBankAdapter>();
 
-// Choose target client based on config
+// Register target client and sink adapter (output port)
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");
 if (useMock)
 {
@@ -26,6 +29,10 @@ else
             builder.Configuration["Target:RealUrl"]!,
             sp.GetRequiredService<ILogger<RealTargetClient>>()));
 }
+builder.Services.AddSingleton<IMetricSink, TargetSinkAdapter>();
+
+// Register orchestrator
+builder.Services.AddSingleton<MetricOrchestrator>();
 
 using var host = builder.Build();
 
