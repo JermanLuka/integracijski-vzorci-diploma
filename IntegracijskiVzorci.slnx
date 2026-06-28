@@ -3,6 +3,8 @@
   <Project Path="ArchA.Hexagonal.Tests/ArchA.Hexagonal.Tests.csproj" />
   <Project Path="ArchB.Monolith/ArchB.Monolith.csproj" />
   <Project Path="ArchB.Monolith.Tests/ArchB.Monolith.Tests.csproj" />
+  <Project Path="ArchC.Messaging/ArchC.Messaging.csproj" />
+  <Project Path="ArchC.Messaging.Tests/ArchC.Messaging.Tests.csproj" />
   <Project Path="Shared.Tests/Shared.Tests.csproj" />
   <Project Path="Shared/Shared.csproj" />
 </Solution>
