@@ -16,6 +16,9 @@ public class MessagingOrchestratorTests
         return "[{\"page\":1,\"pages\":1,\"total\":1},[{\"value\":" + v + "}]]";
     }
 
+    private const string OpenMeteoResponse =
+        """{"current":{"temperature_2m":22.5,"relative_humidity_2m":65,"wind_speed_10m":12.3}}""";
+
     private static Dictionary<string, string> AllFakeResponses() => new()
     {
         ["/user"] = """{"public_repos":5,"followers":10,"public_gists":2}""",
@@ -25,6 +28,7 @@ public class MessagingOrchestratorTests
         ["/v2/country/SVN/indicator/NY.GDP.MKTP.CD?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(54000000000),
         ["/v2/country/SVN/indicator/SP.POP.TOTL?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(2100000),
         ["/v2/country/SVN/indicator/SP.DYN.LE00.IN?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(81.2),
+        ["/v1/forecast?latitude=46.05&longitude=14.51&current=temperature_2m,relative_humidity_2m,wind_speed_10m"] = OpenMeteoResponse,
     };
 
     private static IConfigurationRoot AllTokensConfig() => new ConfigurationBuilder()
@@ -34,6 +38,8 @@ public class MessagingOrchestratorTests
             ["StackOverflow:AccessToken"] = "test-token",
             ["StackOverflow:ApiKey"] = "test-key",
             ["WorldBank:CountryCode"] = "SVN",
+            ["OpenMeteo:Latitude"] = "46.05",
+            ["OpenMeteo:Longitude"] = "14.51",
         })
         .Build();
 
@@ -47,25 +53,26 @@ public class MessagingOrchestratorTests
         var github = new GitHubProducer(config, loggerFactory, handler);
         var stackoverflow = new StackOverflowProducer(config, loggerFactory, handler);
         var worldbank = new WorldBankProducer(config, loggerFactory, handler);
+        var openmeteo = new OpenMeteoProducer(config, loggerFactory, handler);
 
         var mockTarget = new MockTargetClient(NullLogger<MockTargetClient>.Instance);
         var consumer = new MetricConsumer(mockTarget, NullLogger<MetricConsumer>.Instance);
 
         var orchestrator = new MessagingOrchestrator(
-            github, stackoverflow, worldbank, consumer,
+            github, stackoverflow, worldbank, openmeteo, consumer,
             NullLogger<MessagingOrchestrator>.Instance);
 
         var success = await orchestrator.RunAsync();
 
         Assert.True(success);
-        // 5 GitHub + 4 StackOverflow + 3 WorldBank = 12
-        Assert.Equal(12, mockTarget.SentMetrics.Count);
+        // 5 GitHub + 4 StackOverflow + 3 WorldBank + 3 OpenMeteo = 15
+        Assert.Equal(15, mockTarget.SentMetrics.Count);
     }
 
     [Fact]
     public async Task FaultTolerance_OneSourceFails_OthersContinue()
     {
-        // Only WorldBank and GitHub responses, StackOverflow will fail
+        // Only WorldBank, GitHub, and OpenMeteo responses, StackOverflow will fail
         var responses = new Dictionary<string, string>
         {
             ["/user"] = """{"public_repos":5,"followers":10,"public_gists":2}""",
@@ -73,6 +80,7 @@ public class MessagingOrchestratorTests
             ["/v2/country/SVN/indicator/NY.GDP.MKTP.CD?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(54000000000),
             ["/v2/country/SVN/indicator/SP.POP.TOTL?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(2100000),
             ["/v2/country/SVN/indicator/SP.DYN.LE00.IN?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(81.2),
+            ["/v1/forecast?latitude=46.05&longitude=14.51&current=temperature_2m,relative_humidity_2m,wind_speed_10m"] = OpenMeteoResponse,
         };
 
         var handler = new FakeHttpHandler(responses);
@@ -82,19 +90,20 @@ public class MessagingOrchestratorTests
         var github = new GitHubProducer(config, loggerFactory, handler);
         var stackoverflow = new StackOverflowProducer(config, loggerFactory, handler);
         var worldbank = new WorldBankProducer(config, loggerFactory, handler);
+        var openmeteo = new OpenMeteoProducer(config, loggerFactory, handler);
 
         var mockTarget = new MockTargetClient(NullLogger<MockTargetClient>.Instance);
         var consumer = new MetricConsumer(mockTarget, NullLogger<MetricConsumer>.Instance);
 
         var orchestrator = new MessagingOrchestrator(
-            github, stackoverflow, worldbank, consumer,
+            github, stackoverflow, worldbank, openmeteo, consumer,
             NullLogger<MessagingOrchestrator>.Instance);
 
         var success = await orchestrator.RunAsync();
 
         Assert.True(success);
-        // 5 GitHub + 0 StackOverflow (failed) + 3 WorldBank = 8
-        Assert.Equal(8, mockTarget.SentMetrics.Count);
+        // 5 GitHub + 0 StackOverflow (failed) + 3 WorldBank + 3 OpenMeteo = 11
+        Assert.Equal(11, mockTarget.SentMetrics.Count);
         Assert.DoesNotContain(mockTarget.SentMetrics, m => m.Name.StartsWith("stackoverflow."));
         Assert.Contains(mockTarget.SentMetrics, m => m.Name.StartsWith("github."));
         Assert.Contains(mockTarget.SentMetrics, m => m.Name.StartsWith("worldbank."));
@@ -103,12 +112,13 @@ public class MessagingOrchestratorTests
     [Fact]
     public async Task GracefulShutdown_ChannelDrainsAndExits()
     {
-        // Only WorldBank (no tokens for others)
+        // Only WorldBank and OpenMeteo (no tokens for GitHub/StackOverflow)
         var responses = new Dictionary<string, string>
         {
             ["/v2/country/SVN/indicator/NY.GDP.MKTP.CD?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(54000000000),
             ["/v2/country/SVN/indicator/SP.POP.TOTL?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(2100000),
             ["/v2/country/SVN/indicator/SP.DYN.LE00.IN?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(81.2),
+            ["/v1/forecast?latitude=46.05&longitude=14.51&current=temperature_2m,relative_humidity_2m,wind_speed_10m"] = OpenMeteoResponse,
         };
 
         var handler = new FakeHttpHandler(responses);
@@ -116,6 +126,8 @@ public class MessagingOrchestratorTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorldBank:CountryCode"] = "SVN",
+                ["OpenMeteo:Latitude"] = "46.05",
+                ["OpenMeteo:Longitude"] = "14.51",
             })
             .Build();
         var loggerFactory = NullLoggerFactory.Instance;
@@ -123,12 +135,13 @@ public class MessagingOrchestratorTests
         var github = new GitHubProducer(config, loggerFactory, handler);
         var stackoverflow = new StackOverflowProducer(config, loggerFactory, handler);
         var worldbank = new WorldBankProducer(config, loggerFactory, handler);
+        var openmeteo = new OpenMeteoProducer(config, loggerFactory, handler);
 
         var mockTarget = new MockTargetClient(NullLogger<MockTargetClient>.Instance);
         var consumer = new MetricConsumer(mockTarget, NullLogger<MetricConsumer>.Instance);
 
         var orchestrator = new MessagingOrchestrator(
-            github, stackoverflow, worldbank, consumer,
+            github, stackoverflow, worldbank, openmeteo, consumer,
             NullLogger<MessagingOrchestrator>.Instance);
 
         // Should complete without hanging
@@ -136,7 +149,8 @@ public class MessagingOrchestratorTests
         var success = await orchestrator.RunAsync(cts.Token);
 
         Assert.True(success);
-        Assert.Equal(3, mockTarget.SentMetrics.Count);
+        // 3 WorldBank + 3 OpenMeteo = 6
+        Assert.Equal(6, mockTarget.SentMetrics.Count);
     }
 
     [Fact]
@@ -147,6 +161,8 @@ public class MessagingOrchestratorTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["WorldBank:CountryCode"] = "SVN",
+                ["OpenMeteo:Latitude"] = "46.05",
+                ["OpenMeteo:Longitude"] = "14.51",
             })
             .Build();
         var loggerFactory = NullLoggerFactory.Instance;
@@ -154,12 +170,13 @@ public class MessagingOrchestratorTests
         var github = new GitHubProducer(config, loggerFactory, handler);
         var stackoverflow = new StackOverflowProducer(config, loggerFactory, handler);
         var worldbank = new WorldBankProducer(config, loggerFactory, handler);
+        var openmeteo = new OpenMeteoProducer(config, loggerFactory, handler);
 
         var mockTarget = new MockTargetClient(NullLogger<MockTargetClient>.Instance);
         var consumer = new MetricConsumer(mockTarget, NullLogger<MetricConsumer>.Instance);
 
         var orchestrator = new MessagingOrchestrator(
-            github, stackoverflow, worldbank, consumer,
+            github, stackoverflow, worldbank, openmeteo, consumer,
             NullLogger<MessagingOrchestrator>.Instance);
 
         var success = await orchestrator.RunAsync();

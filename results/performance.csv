@@ -1,0 +1,4 @@
+Architecture,MeanMs,StdDevMs,Iterations
+Monolith (Layered),0.076,0.02,50
+Hexagonal (Ports & Adapters),0.077,0.017,50
+Messaging (Channel-based),0.137,0.037,50

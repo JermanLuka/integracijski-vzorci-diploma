@@ -89,7 +89,7 @@ public class MetricOrchestratorTests
     [Fact]
     public async Task DataAccess_ReturnsEmptyWhenSourceFails()
     {
-        // Handler with no canned responses — all HTTP calls return 404
+        // Handler with no canned responses -all HTTP calls return 404
         var handler = new FakeHttpHandler(new Dictionary<string, string>());
         var config = AllTokensConfig();
         var dataAccess = new DataAccess(config, NullLoggerFactory.Instance, handler);
@@ -149,5 +149,17 @@ public class MetricOrchestratorTests
         Assert.Equal(5, github.Count);
         Assert.Empty(stackoverflow); // failed gracefully
         Assert.Equal(3, worldbank.Count);
+    }
+
+    [Fact]
+    public async Task DataAccess_FailFast_PropagatesException()
+    {
+        // No canned responses -all HTTP calls will fail
+        var handler = new FakeHttpHandler(new Dictionary<string, string>());
+        var config = AllTokensConfig();
+        var dataAccess = new DataAccess(config, NullLoggerFactory.Instance, handler, failFast: true);
+
+        // With failFast, the exception propagates instead of returning empty
+        await Assert.ThrowsAsync<HttpRequestException>(() => dataAccess.FetchGitHubAsync());
     }
 }

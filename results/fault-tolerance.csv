@@ -1,0 +1,17 @@
+Architecture,FailingSource,ExpectedMetrics,ActualMetrics,Percentage,Continued
+Monolith,GitHub,10,10,100.0,True
+Monolith (fail-fast),GitHub,10,0,0.0,False
+Hexagonal,GitHub,10,10,100.0,True
+Messaging,GitHub,10,10,100.0,True
+Monolith,StackOverflow,11,11,100.0,True
+Monolith (fail-fast),StackOverflow,11,0,0.0,False
+Hexagonal,StackOverflow,11,11,100.0,True
+Messaging,StackOverflow,11,11,100.0,True
+Monolith,WorldBank,12,12,100.0,True
+Monolith (fail-fast),WorldBank,12,0,0.0,False
+Hexagonal,WorldBank,12,12,100.0,True
+Messaging,WorldBank,12,12,100.0,True
+Monolith,OpenMeteo,12,12,100.0,True
+Monolith (fail-fast),OpenMeteo,12,0,0.0,False
+Hexagonal,OpenMeteo,12,12,100.0,True
+Messaging,OpenMeteo,12,12,100.0,True

@@ -1,0 +1,4 @@
+Architecture,Ext_FilesModified,Ext_NewFiles,Ext_LinesAdded,Ext_CoreChanged,Cx_Maintainability,Cx_CyclomaticComplexity,Cx_ClassCoupling,Cx_LinesOfCode,Perf_MeanMs,Perf_StdDevMs,FT_AvgDeliveryPct
+Monolith,3,0,22,Yes (DataAccess + Orchestrator),55,25,37,197,0.076,0.02,100.0
+Hexagonal,2,1,37,No (only adapter + registration),72,44,39,269,0.077,0.017,100.0
+Messaging,3,1,51,No (only producer + registration),66,46,58,368,0.137,0.037,100.0

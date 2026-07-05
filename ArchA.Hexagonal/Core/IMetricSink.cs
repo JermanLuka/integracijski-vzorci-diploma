@@ -3,7 +3,7 @@ using Shared.Models;
 namespace ArchA.Hexagonal.Core;
 
 /// <summary>
-/// Output port — represents a target for sending metrics.
+/// Output port -represents a target for sending metrics.
 /// </summary>
 public interface IMetricSink
 {
