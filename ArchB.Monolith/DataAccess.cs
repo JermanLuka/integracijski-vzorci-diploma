@@ -14,13 +14,15 @@ public sealed class DataAccess
     private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<DataAccess> _logger;
     private readonly HttpMessageHandler? _handler;
+    private readonly bool _failFast;
 
-    public DataAccess(IConfiguration config, ILoggerFactory loggerFactory, HttpMessageHandler? handler = null)
+    public DataAccess(IConfiguration config, ILoggerFactory loggerFactory, HttpMessageHandler? handler = null, bool failFast = false)
     {
         _config = config;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<DataAccess>();
         _handler = handler;
+        _failFast = failFast;
     }
 
     private HttpClient CreateHttpClient() =>
@@ -40,9 +42,9 @@ public sealed class DataAccess
             var source = new GitHubSource(CreateHttpClient(), token, _loggerFactory.CreateLogger<GitHubSource>());
             return await source.FetchMetricsAsync(ct);
         }
-        catch (Exception ex)
+        catch when (!_failFast)
         {
-            _logger.LogWarning(ex, "GitHub source failed, skipping");
+            _logger.LogWarning("GitHub source failed, skipping");
             return [];
         }
     }
@@ -62,9 +64,9 @@ public sealed class DataAccess
             var source = new StackOverflowSource(CreateHttpClient(), accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
             return await source.FetchMetricsAsync(ct);
         }
-        catch (Exception ex)
+        catch when (!_failFast)
         {
-            _logger.LogWarning(ex, "StackOverflow source failed, skipping");
+            _logger.LogWarning("StackOverflow source failed, skipping");
             return [];
         }
     }
@@ -78,9 +80,26 @@ public sealed class DataAccess
             var source = new PublicDataSource(CreateHttpClient(), countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
             return await source.FetchMetricsAsync(ct);
         }
-        catch (Exception ex)
+        catch when (!_failFast)
         {
-            _logger.LogWarning(ex, "WorldBank source failed, skipping");
+            _logger.LogWarning("WorldBank source failed, skipping");
+            return [];
+        }
+    }
+
+    public async Task<IReadOnlyList<Metric>> FetchOpenMeteoAsync(CancellationToken ct = default)
+    {
+        var latitude = _config["OpenMeteo:Latitude"] ?? "46.05";
+        var longitude = _config["OpenMeteo:Longitude"] ?? "14.51";
+
+        try
+        {
+            var source = new OpenMeteoSource(CreateHttpClient(), latitude, longitude, _loggerFactory.CreateLogger<OpenMeteoSource>());
+            return await source.FetchMetricsAsync(ct);
+        }
+        catch when (!_failFast)
+        {
+            _logger.LogWarning("OpenMeteo source failed, skipping");
             return [];
         }
     }

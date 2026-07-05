@@ -13,6 +13,7 @@ public sealed class MessagingOrchestrator
     private readonly GitHubProducer _github;
     private readonly StackOverflowProducer _stackoverflow;
     private readonly WorldBankProducer _worldbank;
+    private readonly OpenMeteoProducer _openmeteo;
     private readonly MetricConsumer _consumer;
     private readonly ILogger<MessagingOrchestrator> _logger;
 
@@ -20,12 +21,14 @@ public sealed class MessagingOrchestrator
         GitHubProducer github,
         StackOverflowProducer stackoverflow,
         WorldBankProducer worldbank,
+        OpenMeteoProducer openmeteo,
         MetricConsumer consumer,
         ILogger<MessagingOrchestrator> logger)
     {
         _github = github;
         _stackoverflow = stackoverflow;
         _worldbank = worldbank;
+        _openmeteo = openmeteo;
         _consumer = consumer;
         _logger = logger;
     }
@@ -53,6 +56,7 @@ public sealed class MessagingOrchestrator
             _github.ProduceAsync(channel.Writer, ct),
             _stackoverflow.ProduceAsync(channel.Writer, ct),
             _worldbank.ProduceAsync(channel.Writer, ct),
+            _openmeteo.ProduceAsync(channel.Writer, ct),
         };
 
         await Task.WhenAll(producerTasks);

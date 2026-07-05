@@ -6,7 +6,7 @@ namespace Shared.Target;
 
 /// <summary>
 /// Deterministic in-memory target client used for all measurements.
-/// No network I/O — simply stores received metrics.
+/// No network I/O -simply stores received metrics.
 /// </summary>
 public sealed class MockTargetClient : ITargetClient
 {

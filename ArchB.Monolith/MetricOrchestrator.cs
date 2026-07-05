@@ -38,6 +38,10 @@ public sealed class MetricOrchestrator
         _logger.LogInformation("WorldBank: {Count} metrics", worldbank.Count);
         all.AddRange(worldbank);
 
+        var openmeteo = await _dataAccess.FetchOpenMeteoAsync(ct);
+        _logger.LogInformation("OpenMeteo: {Count} metrics", openmeteo.Count);
+        all.AddRange(openmeteo);
+
         if (all.Count == 0)
         {
             _logger.LogWarning("No metrics collected from any source");

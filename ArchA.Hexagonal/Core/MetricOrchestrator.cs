@@ -4,7 +4,7 @@ using Shared.Models;
 namespace ArchA.Hexagonal.Core;
 
 /// <summary>
-/// Core application logic — orchestrates metric collection and sending.
+/// Core application logic -orchestrates metric collection and sending.
 /// Knows only ports (IMetricSource, IMetricSink) and the domain model (Metric).
 /// </summary>
 public sealed class MetricOrchestrator

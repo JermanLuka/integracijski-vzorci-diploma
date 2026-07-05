@@ -1,0 +1,5 @@
+Architecture,FilesModified,NewFiles,LinesAdded,CoreLogicChanged
+Shared (common),0,1,61,N/A
+Monolith,3,0,22,Yes (DataAccess + Orchestrator)
+Hexagonal,2,1,37,No (only adapter + registration)
+Messaging,3,1,51,No (only producer + registration)

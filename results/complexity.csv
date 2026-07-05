@@ -1,0 +1,4 @@
+Architecture,MaintainabilityIndex,CyclomaticComplexity,ClassCoupling,LinesOfCode
+Monolith (Layered),55,25,37,197
+Hexagonal (Ports & Adapters),72,44,39,269
+Messaging (Channel-based),66,46,58,368

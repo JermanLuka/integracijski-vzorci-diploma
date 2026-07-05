@@ -31,7 +31,7 @@ public sealed class RealTargetClient : ITargetClient
             response.EnsureSuccessStatusCode();
 
             _logger.LogInformation(
-                "RealTargetClient sent {Count} metrics to {Url} — {Status}",
+                "RealTargetClient sent {Count} metrics to {Url} -{Status}",
                 list.Count, _targetUrl, response.StatusCode);
 
             return new SendResult(true, list.Count);

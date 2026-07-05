@@ -14,6 +14,7 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 builder.Services.AddSingleton<GitHubProducer>();
 builder.Services.AddSingleton<StackOverflowProducer>();
 builder.Services.AddSingleton<WorldBankProducer>();
+builder.Services.AddSingleton<OpenMeteoProducer>();
 
 // Register target client
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");

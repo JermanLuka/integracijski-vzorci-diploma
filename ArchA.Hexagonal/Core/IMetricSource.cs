@@ -3,7 +3,7 @@ using Shared.Models;
 namespace ArchA.Hexagonal.Core;
 
 /// <summary>
-/// Input port — represents a source of metrics.
+/// Input port -represents a source of metrics.
 /// </summary>
 public interface IMetricSource
 {

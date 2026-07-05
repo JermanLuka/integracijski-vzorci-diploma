@@ -5,6 +5,7 @@
   <Project Path="ArchB.Monolith.Tests/ArchB.Monolith.Tests.csproj" />
   <Project Path="ArchC.Messaging/ArchC.Messaging.csproj" />
   <Project Path="ArchC.Messaging.Tests/ArchC.Messaging.Tests.csproj" />
+  <Project Path="Measurements/Measurements.csproj" />
   <Project Path="Shared.Tests/Shared.Tests.csproj" />
   <Project Path="Shared/Shared.csproj" />
 </Solution>

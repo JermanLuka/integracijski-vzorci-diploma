@@ -14,6 +14,7 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 builder.Services.AddSingleton<IMetricSource, GitHubAdapter>();
 builder.Services.AddSingleton<IMetricSource, StackOverflowAdapter>();
 builder.Services.AddSingleton<IMetricSource, WorldBankAdapter>();
+builder.Services.AddSingleton<IMetricSource, OpenMeteoAdapter>();
 
 // Register target client and sink adapter (output port)
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");
