@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using ArchC.Messaging.Producers;
 using Shared.Models;
 using Shared.Target;
+using Shared.Tests;
 
 namespace ArchC.Messaging.Tests;
 
@@ -35,7 +36,7 @@ public class ProducerRetryTests
     [Fact]
     public async Task Producer_SourceFailsOnceThenRecovers_MetricsStillWrittenToChannel()
     {
-        var handler = new FlakyHttpHandler(
+        var handler = new FakeHttpHandler(
             new Dictionary<string, string> { [OpenMeteoPath] = OpenMeteoResponse },
             new Dictionary<string, int> { [OpenMeteoPath] = 1 });
 
@@ -56,7 +57,7 @@ public class ProducerRetryTests
     [Fact]
     public async Task Producer_SourceFailsAllAttempts_FinishesWithoutExceptionAndWritesNothing()
     {
-        var handler = new FlakyHttpHandler(
+        var handler = new FakeHttpHandler(
             new Dictionary<string, string> { [OpenMeteoPath] = OpenMeteoResponse },
             new Dictionary<string, int> { [OpenMeteoPath] = int.MaxValue });
 
@@ -93,7 +94,7 @@ public class ProducerRetryTests
         };
 
         // StackOverflow is transiently down: first request fails, retry succeeds
-        var handler = new FlakyHttpHandler(responses, new Dictionary<string, int> { [stackOverflowPath] = 1 });
+        var handler = new FakeHttpHandler(responses, new Dictionary<string, int> { [stackOverflowPath] = 1 });
 
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
