@@ -34,7 +34,9 @@ public sealed class GitHubProducer
         {
             var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new GitHubSource(http, token, _loggerFactory.CreateLogger<GitHubSource>());
-            var metrics = await source.FetchMetricsAsync(ct);
+            var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(GitHubProducer), _logger, ct);
+            if (metrics is null)
+                return;
 
             foreach (var metric in metrics)
                 await writer.WriteAsync(metric, ct);
