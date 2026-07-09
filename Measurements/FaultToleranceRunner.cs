@@ -49,6 +49,17 @@ public sealed class FaultToleranceRunner
 
     private static readonly string[] SourceNames = ["GitHub", "StackOverflow", "WorldBank", "OpenMeteo"];
 
+    // The first endpoint each source contacts. Sources fetch their endpoints
+    // sequentially, so a transient failure on this key means the source's first
+    // incoming request fails and the source is recovered by the time it is retried.
+    private static readonly Dictionary<string, string> FirstEndpoint = new()
+    {
+        ["GitHub"] = "/user",
+        ["StackOverflow"] = "/2.3/me?site=stackoverflow&key=test-key&access_token=test-token&filter=default",
+        ["WorldBank"] = "/v2/country/SVN/indicator/NY.GDP.MKTP.CD?format=json&per_page=1&mrv=1",
+        ["OpenMeteo"] = "/v1/forecast?latitude=46.05&longitude=14.51&current=temperature_2m,relative_humidity_2m,wind_speed_10m",
+    };
+
     private static IConfigurationRoot BuildConfig() => new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -61,7 +72,7 @@ public sealed class FaultToleranceRunner
         })
         .Build();
 
-    private static Dictionary<string, string> AllResponsesExcept(string failingSource)
+    private static Dictionary<string, string> AllResponsesExcept(string? failingSource)
     {
         var responses = new Dictionary<string, string>();
 
@@ -89,7 +100,16 @@ public sealed class FaultToleranceRunner
         _ => throw new ArgumentException($"Unknown source: {failingSource}"),
     };
 
+    // Scenario A: the failing source is permanently down (its endpoints have no responses at all)
+    private static FakeHttpHandler PermanentOutageHandler(string failingSource) =>
+        new(AllResponsesExcept(failingSource));
+
+    // Scenario B: the failing source rejects its first incoming request, then is recovered
+    private static FakeHttpHandler TransientOutageHandler(string failingSource) =>
+        new(AllResponsesExcept(null), new Dictionary<string, int> { [FirstEndpoint[failingSource]] = 1 });
+
     public record ExperimentResult(
+        string Scenario,
         string Architecture,
         string FailingSource,
         int ExpectedMetrics,
@@ -103,18 +123,35 @@ public sealed class FaultToleranceRunner
 
         foreach (var failingSource in SourceNames)
         {
-            results.Add(await RunMonolithAsync(failingSource, failFast: false));
-            results.Add(await RunMonolithAsync(failingSource, failFast: true));
-            results.Add(await RunHexagonalAsync(failingSource));
-            results.Add(await RunMessagingAsync(failingSource));
+            var expected = ExpectedMetricsWhenFailing(failingSource);
+            results.Add(await RunMonolithAsync("A", failingSource, PermanentOutageHandler(failingSource), expected, failFast: false));
+            results.Add(await RunMonolithAsync("A", failingSource, PermanentOutageHandler(failingSource), expected, failFast: true));
+            results.Add(await RunHexagonalAsync("A", failingSource, PermanentOutageHandler(failingSource), expected));
+            results.Add(await RunMessagingAsync("A", failingSource, PermanentOutageHandler(failingSource), expected));
         }
 
         return results;
     }
 
-    private async Task<ExperimentResult> RunMonolithAsync(string failingSource, bool failFast)
+    public async Task<List<ExperimentResult>> RunAllTransientAsync()
     {
-        var handler = new FakeHttpHandler(AllResponsesExcept(failingSource));
+        var results = new List<ExperimentResult>();
+
+        foreach (var failingSource in SourceNames)
+        {
+            // The source recovers, so a resilient implementation should deliver all metrics
+            results.Add(await RunMonolithAsync("B", failingSource, TransientOutageHandler(failingSource), TotalMetrics, failFast: false));
+            results.Add(await RunMonolithAsync("B", failingSource, TransientOutageHandler(failingSource), TotalMetrics, failFast: true));
+            results.Add(await RunHexagonalAsync("B", failingSource, TransientOutageHandler(failingSource), TotalMetrics));
+            results.Add(await RunMessagingAsync("B", failingSource, TransientOutageHandler(failingSource), TotalMetrics));
+        }
+
+        return results;
+    }
+
+    private async Task<ExperimentResult> RunMonolithAsync(
+        string scenario, string failingSource, FakeHttpHandler handler, int expected, bool failFast)
+    {
         var config = BuildConfig();
         var loggerFactory = NullLoggerFactory.Instance;
 
@@ -132,19 +169,18 @@ public sealed class FaultToleranceRunner
         catch
         {
             // fail-fast mode: exception propagated, pipeline crashed
-            return new ExperimentResult(archLabel, failingSource, ExpectedMetricsWhenFailing(failingSource), 0, 0, false);
+            return new ExperimentResult(scenario, archLabel, failingSource, expected, 0, 0, false);
         }
 
-        var expected = ExpectedMetricsWhenFailing(failingSource);
         var actual = target.SentMetrics.Count;
         var pct = expected > 0 ? (double)actual / expected * 100 : 0;
 
-        return new ExperimentResult(archLabel, failingSource, expected, actual, pct, actual > 0);
+        return new ExperimentResult(scenario, archLabel, failingSource, expected, actual, pct, actual > 0);
     }
 
-    private async Task<ExperimentResult> RunHexagonalAsync(string failingSource)
+    private async Task<ExperimentResult> RunHexagonalAsync(
+        string scenario, string failingSource, FakeHttpHandler handler, int expected)
     {
-        var handler = new FakeHttpHandler(AllResponsesExcept(failingSource));
         var config = BuildConfig();
         var loggerFactory = NullLoggerFactory.Instance;
 
@@ -163,16 +199,15 @@ public sealed class FaultToleranceRunner
 
         await orchestrator.RunAsync();
 
-        var expected = ExpectedMetricsWhenFailing(failingSource);
         var actual = target.SentMetrics.Count;
         var pct = expected > 0 ? (double)actual / expected * 100 : 0;
 
-        return new ExperimentResult("Hexagonal", failingSource, expected, actual, pct, actual > 0);
+        return new ExperimentResult(scenario, "Hexagonal", failingSource, expected, actual, pct, actual > 0);
     }
 
-    private async Task<ExperimentResult> RunMessagingAsync(string failingSource)
+    private async Task<ExperimentResult> RunMessagingAsync(
+        string scenario, string failingSource, FakeHttpHandler handler, int expected)
     {
-        var handler = new FakeHttpHandler(AllResponsesExcept(failingSource));
         var config = BuildConfig();
         var loggerFactory = NullLoggerFactory.Instance;
 
@@ -189,11 +224,10 @@ public sealed class FaultToleranceRunner
 
         await orchestrator.RunAsync();
 
-        var expected = ExpectedMetricsWhenFailing(failingSource);
         var actual = target.SentMetrics.Count;
         var pct = expected > 0 ? (double)actual / expected * 100 : 0;
 
-        return new ExperimentResult("Messaging", failingSource, expected, actual, pct, actual > 0);
+        return new ExperimentResult(scenario, "Messaging", failingSource, expected, actual, pct, actual > 0);
     }
 
     public static void WriteCsv(List<ExperimentResult> results, string csvPath)
@@ -207,6 +241,21 @@ public sealed class FaultToleranceRunner
             writer.WriteLine(string.Format(CultureInfo.InvariantCulture,
                 "{0},{1},{2},{3},{4:F1},{5}",
                 r.Architecture, r.FailingSource, r.ExpectedMetrics, r.ActualMetrics,
+                r.Percentage, r.Continued));
+        }
+    }
+
+    public static void WriteTransientCsv(List<ExperimentResult> results, string csvPath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(csvPath)!);
+
+        using var writer = new StreamWriter(csvPath);
+        writer.WriteLine("Scenario,Architecture,FailingSource,ExpectedMetrics,ActualMetrics,Percentage,Continued");
+        foreach (var r in results)
+        {
+            writer.WriteLine(string.Format(CultureInfo.InvariantCulture,
+                "{0},{1},{2},{3},{4},{5:F1},{6}",
+                r.Scenario, r.Architecture, r.FailingSource, r.ExpectedMetrics, r.ActualMetrics,
                 r.Percentage, r.Continued));
         }
     }

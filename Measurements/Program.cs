@@ -15,4 +15,7 @@ var ftRunner = new FaultToleranceRunner();
 var ftResults = await ftRunner.RunAllAsync();
 FaultToleranceRunner.WriteCsv(ftResults, Path.Combine(resultsDir, "fault-tolerance.csv"));
 
+var ftTransientResults = await ftRunner.RunAllTransientAsync();
+FaultToleranceRunner.WriteTransientCsv(ftTransientResults, Path.Combine(resultsDir, "fault-tolerance-transient.csv"));
+
 SummaryRunner.Run(resultsDir);
