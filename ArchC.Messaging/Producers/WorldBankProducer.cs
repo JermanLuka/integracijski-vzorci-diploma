@@ -28,7 +28,9 @@ public sealed class WorldBankProducer
         {
             var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new PublicDataSource(http, countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
-            var metrics = await source.FetchMetricsAsync(ct);
+            var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(WorldBankProducer), logger, ct);
+            if (metrics is null)
+                return;
 
             foreach (var metric in metrics)
                 await writer.WriteAsync(metric, ct);

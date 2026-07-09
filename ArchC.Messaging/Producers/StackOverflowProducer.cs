@@ -35,7 +35,9 @@ public sealed class StackOverflowProducer
         {
             var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new StackOverflowSource(http, accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
-            var metrics = await source.FetchMetricsAsync(ct);
+            var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(StackOverflowProducer), _logger, ct);
+            if (metrics is null)
+                return;
 
             foreach (var metric in metrics)
                 await writer.WriteAsync(metric, ct);
