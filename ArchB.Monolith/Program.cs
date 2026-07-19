@@ -12,7 +12,6 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 builder.Services.AddSingleton<DataAccess>();
 builder.Services.AddSingleton<MetricOrchestrator>();
 
-// Choose target client based on config
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");
 if (useMock)
 {

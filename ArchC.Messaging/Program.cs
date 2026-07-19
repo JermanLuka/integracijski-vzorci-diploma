@@ -10,13 +10,11 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.SetBasePath(AppContext.BaseDirectory);
 builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 
-// Register producers
 builder.Services.AddSingleton<GitHubProducer>();
 builder.Services.AddSingleton<StackOverflowProducer>();
 builder.Services.AddSingleton<WorldBankProducer>();
 builder.Services.AddSingleton<OpenMeteoProducer>();
 
-// Register target client
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");
 if (useMock)
 {
@@ -31,7 +29,6 @@ else
             sp.GetRequiredService<ILogger<RealTargetClient>>()));
 }
 
-// Register consumer and orchestrator
 builder.Services.AddSingleton<MetricConsumer>();
 builder.Services.AddSingleton<MessagingOrchestrator>();
 

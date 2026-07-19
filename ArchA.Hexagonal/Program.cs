@@ -10,13 +10,11 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Configuration.SetBasePath(AppContext.BaseDirectory);
 builder.Configuration.AddJsonFile("appsettings.json", optional: false);
 
-// Register source adapters (input ports)
 builder.Services.AddSingleton<IMetricSource, GitHubAdapter>();
 builder.Services.AddSingleton<IMetricSource, StackOverflowAdapter>();
 builder.Services.AddSingleton<IMetricSource, WorldBankAdapter>();
 builder.Services.AddSingleton<IMetricSource, OpenMeteoAdapter>();
 
-// Register target client and sink adapter (output port)
 var useMock = builder.Configuration.GetValue<bool>("Target:UseMock");
 if (useMock)
 {
@@ -32,7 +30,6 @@ else
 }
 builder.Services.AddSingleton<IMetricSink, TargetSinkAdapter>();
 
-// Register orchestrator
 builder.Services.AddSingleton<MetricOrchestrator>();
 
 using var host = builder.Build();

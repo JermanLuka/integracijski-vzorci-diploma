@@ -43,7 +43,6 @@ public sealed class MetricConsumer
             }
         }
 
-        // Send remaining metrics
         if (batch.Count > 0)
         {
             var (sent, failed) = await SendBatchWithRetryAsync(batch, ct);
@@ -76,7 +75,6 @@ public sealed class MetricConsumer
             await Task.Delay(delay, ct);
         }
 
-        // All retries exhausted, move to dead letter queue
         foreach (var metric in batch)
             _deadLetterQueue.Add(metric);
 

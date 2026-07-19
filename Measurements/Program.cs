@@ -8,7 +8,7 @@ var resultsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", 
 Directory.CreateDirectory(resultsDir);
 
 var perfRunner = new PerformanceRunner();
-var perfResults = await perfRunner.RunAllAsync(iterations: 50);
+var perfResults = await perfRunner.RunAllAsync(iterations: 500);
 PerformanceRunner.WriteCsv(perfResults, Path.Combine(resultsDir, "performance.csv"));
 
 var ftRunner = new FaultToleranceRunner();
