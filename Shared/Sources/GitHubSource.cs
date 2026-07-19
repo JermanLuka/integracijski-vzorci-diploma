@@ -33,12 +33,10 @@ public sealed class GitHubSource
 
         try
         {
-            // Fetch user profile
             var userJson = await _http.GetStringAsync("/user", ct);
             using var userDoc = JsonDocument.Parse(userJson);
             var user = userDoc.RootElement;
 
-            // Fetch repos to sum stars and forks
             var reposJson = await _http.GetStringAsync("/user/repos?per_page=100&type=owner", ct);
             using var reposDoc = JsonDocument.Parse(reposJson);
 

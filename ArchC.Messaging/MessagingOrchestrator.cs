@@ -45,12 +45,10 @@ public sealed class MessagingOrchestrator
             SingleReader = false,
         });
 
-        // Start multiple consumers concurrently
         var consumerTasks = Enumerable.Range(0, ConsumerCount)
             .Select(_ => _consumer.ConsumeAsync(channel.Reader, ct))
             .ToArray();
 
-        // Start all producers concurrently
         var producerTasks = new[]
         {
             _github.ProduceAsync(channel.Writer, ct),
@@ -61,11 +59,9 @@ public sealed class MessagingOrchestrator
 
         await Task.WhenAll(producerTasks);
 
-        // Signal that no more metrics will be written
         channel.Writer.Complete();
         _logger.LogInformation("All producers finished, channel completed");
 
-        // Wait for all consumers to drain the channel
         var results = await Task.WhenAll(consumerTasks);
 
         var totalSent = results.Sum(r => r.Sent);

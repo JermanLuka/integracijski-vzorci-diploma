@@ -1,17 +1,11 @@
-using System.Globalization;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using ArchA.Hexagonal.Adapters;
 using ArchA.Hexagonal.Core;
 using Shared.Models;
-using Shared.Target;
 using Shared.Tests;
 
 namespace ArchA.Hexagonal.Tests;
 
-/// <summary>
-/// Simple test double implementing IMetricSource for core tests.
-/// </summary>
 internal sealed class FakeMetricSource : IMetricSource
 {
     private readonly IReadOnlyList<Metric> _metrics;
@@ -28,9 +22,6 @@ internal sealed class FakeMetricSource : IMetricSource
         => Task.FromResult(_metrics);
 }
 
-/// <summary>
-/// Test double that throws on FetchAsync.
-/// </summary>
 internal sealed class FailingMetricSource : IMetricSource
 {
     public string Name => "Failing";
@@ -39,9 +30,6 @@ internal sealed class FailingMetricSource : IMetricSource
         => throw new InvalidOperationException("Simulated source failure");
 }
 
-/// <summary>
-/// Simple test double implementing IMetricSink for core tests.
-/// </summary>
 internal sealed class FakeMetricSink : IMetricSink
 {
     public List<Metric> Received { get; } = [];
@@ -106,33 +94,8 @@ public class MetricOrchestratorTests
     [Fact]
     public async Task Adapters_FetchThroughSharedSources()
     {
-        static string MakeWorldBankResponse(double value)
-        {
-            var v = value.ToString("G", CultureInfo.InvariantCulture);
-            return "[{\"page\":1,\"pages\":1,\"total\":1},[{\"value\":" + v + "}]]";
-        }
-
-        var handler = new FakeHttpHandler(new Dictionary<string, string>
-        {
-            ["/user"] = """{"public_repos":5,"followers":10,"public_gists":2}""",
-            ["/user/repos?per_page=100&type=owner"] = """[{"stargazers_count":3,"forks_count":1}]""",
-            ["/2.3/me?site=stackoverflow&key=test-key&access_token=test-token&filter=default"] =
-                """{"items":[{"reputation":1234,"badge_counts":{"gold":1,"silver":5,"bronze":20}}]}""",
-            ["/v2/country/SVN/indicator/NY.GDP.MKTP.CD?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(54000000000),
-            ["/v2/country/SVN/indicator/SP.POP.TOTL?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(2100000),
-            ["/v2/country/SVN/indicator/SP.DYN.LE00.IN?format=json&per_page=1&mrv=1"] = MakeWorldBankResponse(81.2),
-        });
-
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["GitHub:Token"] = "test-gh-token",
-                ["StackOverflow:AccessToken"] = "test-token",
-                ["StackOverflow:ApiKey"] = "test-key",
-                ["WorldBank:CountryCode"] = "SVN",
-            })
-            .Build();
-
+        var handler = new FakeHttpHandler(TestData.ResponsesFor("GitHub", "StackOverflow", "WorldBank"));
+        var config = TestData.ConfigFor("GitHub", "StackOverflow", "WorldBank");
         var loggerFactory = NullLoggerFactory.Instance;
 
         IMetricSource[] sources =
@@ -156,13 +119,7 @@ public class MetricOrchestratorTests
     public async Task Adapters_SkipWhenTokensMissing()
     {
         var handler = new FakeHttpHandler(new Dictionary<string, string>());
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["WorldBank:CountryCode"] = "SVN",
-            })
-            .Build();
-
+        var config = TestData.ConfigFor("WorldBank");
         var loggerFactory = NullLoggerFactory.Instance;
         var github = new GitHubAdapter(config, loggerFactory, handler);
         var stackoverflow = new StackOverflowAdapter(config, loggerFactory, handler);
