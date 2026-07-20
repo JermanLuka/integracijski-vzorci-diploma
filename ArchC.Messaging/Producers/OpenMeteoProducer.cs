@@ -28,7 +28,7 @@ public sealed class OpenMeteoProducer
 
         try
         {
-            var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+            using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new OpenMeteoSource(http, latitude, longitude, _loggerFactory.CreateLogger<OpenMeteoSource>());
             var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(OpenMeteoProducer), _logger, ct);
             if (metrics is null)
@@ -38,6 +38,10 @@ public sealed class OpenMeteoProducer
                 await writer.WriteAsync(metric, ct);
 
             _logger.LogInformation("OpenMeteoProducer wrote {Count} metrics to channel", metrics.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

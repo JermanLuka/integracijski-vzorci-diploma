@@ -36,4 +36,14 @@ public class MetricTests
 
         Assert.Equal(a, b);
     }
+
+    [Fact]
+    public void Metric_WithEqualButDistinctTagInstances_AreNotEqual()
+    {
+        var ts = DateTimeOffset.UtcNow;
+        var a = new Metric("x", 1, ts, new Dictionary<string, string> { ["env"] = "test" });
+        var b = new Metric("x", 1, ts, new Dictionary<string, string> { ["env"] = "test" });
+
+        Assert.NotEqual(a, b);
+    }
 }

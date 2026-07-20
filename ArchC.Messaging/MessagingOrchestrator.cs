@@ -65,13 +65,12 @@ public sealed class MessagingOrchestrator
         var results = await Task.WhenAll(consumerTasks);
 
         var totalSent = results.Sum(r => r.Sent);
-        var totalFailed = results.Sum(r => r.Failed);
         var totalDeadLettered = results.Sum(r => r.DeadLettered);
 
         _logger.LogInformation(
-            "Orchestrator finished. Sent: {Sent}, Failed: {Failed}, Dead-lettered: {DeadLettered}",
-            totalSent, totalFailed, totalDeadLettered);
+            "Orchestrator finished. Sent: {Sent}, Dead-lettered: {DeadLettered}",
+            totalSent, totalDeadLettered);
 
-        return totalSent > 0;
+        return totalSent > 0 && totalDeadLettered == 0;
     }
 }

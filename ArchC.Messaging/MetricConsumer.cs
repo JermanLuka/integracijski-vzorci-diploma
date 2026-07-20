@@ -10,7 +10,6 @@ public sealed class MetricConsumer
 {
     private const int MaxRetries = 3;
     private const int BatchSize = 5;
-    private static readonly TimeSpan BatchTimeout = TimeSpan.FromMilliseconds(500);
 
     private readonly ITargetClient _target;
     private readonly ILogger<MetricConsumer> _logger;
@@ -27,7 +26,7 @@ public sealed class MetricConsumer
     public async Task<ConsumeResult> ConsumeAsync(ChannelReader<Metric> reader, CancellationToken ct = default)
     {
         int totalSent = 0;
-        int totalFailed = 0;
+        int totalDeadLettered = 0;
         var batch = new List<Metric>();
 
         await foreach (var metric in reader.ReadAllAsync(ct))
@@ -36,27 +35,27 @@ public sealed class MetricConsumer
 
             if (batch.Count >= BatchSize)
             {
-                var (sent, failed) = await SendBatchWithRetryAsync(batch, ct);
+                var (sent, deadLettered) = await SendBatchWithRetryAsync(batch, ct);
                 totalSent += sent;
-                totalFailed += failed;
+                totalDeadLettered += deadLettered;
                 batch.Clear();
             }
         }
 
         if (batch.Count > 0)
         {
-            var (sent, failed) = await SendBatchWithRetryAsync(batch, ct);
+            var (sent, deadLettered) = await SendBatchWithRetryAsync(batch, ct);
             totalSent += sent;
-            totalFailed += failed;
+            totalDeadLettered += deadLettered;
         }
 
-        if (totalSent == 0 && totalFailed == 0)
+        if (totalSent == 0 && totalDeadLettered == 0)
             _logger.LogWarning("Consumer received no metrics from channel");
 
-        return new ConsumeResult(totalSent, totalFailed, _deadLetterQueue.Count);
+        return new ConsumeResult(totalSent, totalDeadLettered);
     }
 
-    private async Task<(int Sent, int Failed)> SendBatchWithRetryAsync(List<Metric> batch, CancellationToken ct)
+    private async Task<(int Sent, int DeadLettered)> SendBatchWithRetryAsync(List<Metric> batch, CancellationToken ct)
     {
         for (int attempt = 1; attempt <= MaxRetries; attempt++)
         {
@@ -67,6 +66,9 @@ public sealed class MetricConsumer
                 _logger.LogInformation("Consumer sent {Count} metrics on attempt {Attempt}", result.MetricsSent, attempt);
                 return (result.MetricsSent, 0);
             }
+
+            if (attempt == MaxRetries)
+                break;
 
             var delay = TimeSpan.FromMilliseconds(100 * Math.Pow(2, attempt - 1));
             _logger.LogWarning("Send attempt {Attempt}/{Max} failed: {Error}. Retrying in {Delay}ms",

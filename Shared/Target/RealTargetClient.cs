@@ -36,6 +36,10 @@ public sealed class RealTargetClient : ITargetClient
 
             return new SendResult(true, list.Count);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex,

@@ -34,6 +34,10 @@ public sealed class MetricOrchestrator
                 _logger.LogInformation("{Source}: {Count} metrics", source.Name, metrics.Count);
                 all.AddRange(metrics);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "{Source} failed, skipping", source.Name);

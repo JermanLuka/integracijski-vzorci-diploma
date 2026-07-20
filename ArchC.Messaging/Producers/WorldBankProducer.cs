@@ -26,7 +26,7 @@ public sealed class WorldBankProducer
 
         try
         {
-            var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+            using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new PublicDataSource(http, countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
             var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(WorldBankProducer), logger, ct);
             if (metrics is null)
@@ -36,6 +36,10 @@ public sealed class WorldBankProducer
                 await writer.WriteAsync(metric, ct);
 
             logger.LogInformation("WorldBankProducer wrote {Count} metrics to channel", metrics.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

@@ -116,6 +116,32 @@ public class MetricOrchestratorTests
     }
 
     [Fact]
+    public async Task Adapters_LoseFailingSourceMetricsOnTransientOutage()
+    {
+        var handler = new FakeHttpHandler(
+            TestData.ResponsesFor("GitHub", "StackOverflow", "WorldBank"),
+            new Dictionary<string, int> { [TestData.FirstEndpoint("GitHub")] = 1 });
+        var config = TestData.ConfigFor("GitHub", "StackOverflow", "WorldBank");
+        var loggerFactory = NullLoggerFactory.Instance;
+
+        IMetricSource[] sources =
+        [
+            new GitHubAdapter(config, loggerFactory, handler),
+            new StackOverflowAdapter(config, loggerFactory, handler),
+            new WorldBankAdapter(config, loggerFactory, handler),
+        ];
+
+        var sink = new FakeMetricSink();
+        var orchestrator = new MetricOrchestrator(sources, sink, NullLogger<MetricOrchestrator>.Instance);
+
+        var success = await orchestrator.RunAsync();
+
+        Assert.True(success);
+        // GitHub's first call fails and is never retried, so only StackOverflow (4) + WorldBank (3) arrive.
+        Assert.Equal(7, sink.Received.Count);
+    }
+
+    [Fact]
     public async Task Adapters_SkipWhenTokensMissing()
     {
         var handler = new FakeHttpHandler(new Dictionary<string, string>());

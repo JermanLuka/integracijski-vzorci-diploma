@@ -32,7 +32,7 @@ public sealed class GitHubProducer
 
         try
         {
-            var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+            using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new GitHubSource(http, token, _loggerFactory.CreateLogger<GitHubSource>());
             var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(GitHubProducer), _logger, ct);
             if (metrics is null)
@@ -42,6 +42,10 @@ public sealed class GitHubProducer
                 await writer.WriteAsync(metric, ct);
 
             _logger.LogInformation("GitHubProducer wrote {Count} metrics to channel", metrics.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

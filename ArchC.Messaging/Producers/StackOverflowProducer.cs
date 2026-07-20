@@ -33,7 +33,7 @@ public sealed class StackOverflowProducer
 
         try
         {
-            var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+            using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
             var source = new StackOverflowSource(http, accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
             var metrics = await FetchRetryPolicy.FetchAsync(source.FetchMetricsAsync, nameof(StackOverflowProducer), _logger, ct);
             if (metrics is null)
@@ -43,6 +43,10 @@ public sealed class StackOverflowProducer
                 await writer.WriteAsync(metric, ct);
 
             _logger.LogInformation("StackOverflowProducer wrote {Count} metrics to channel", metrics.Count);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
