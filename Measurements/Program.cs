@@ -4,7 +4,9 @@ using Measurements;
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-var resultsDir = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "results");
+var resultsDir = args.Length > 0
+    ? args[0]
+    : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "results");
 Directory.CreateDirectory(resultsDir);
 
 var perfRunner = new PerformanceRunner();

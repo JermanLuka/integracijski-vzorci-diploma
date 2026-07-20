@@ -35,7 +35,7 @@ public sealed class GitHubAdapter : IMetricSource
             return [];
         }
 
-        var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+        using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
         var source = new GitHubSource(http, token, _loggerFactory.CreateLogger<GitHubSource>());
         return await source.FetchMetricsAsync(ct);
     }

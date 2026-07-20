@@ -75,13 +75,30 @@ public class MetricOrchestratorTests
     {
         var handler = new FakeHttpHandler(TestData.ResponsesFor("WorldBank"));
         var dataAccess = new DataAccess(TestData.ConfigFor("WorldBank"), NullLoggerFactory.Instance, handler);
-        var failingTarget = new RealTargetClient(
-            new HttpClient(), "http://localhost:0/invalid", NullLogger<RealTargetClient>.Instance);
+        var failingTarget = new FailingTargetClient(failuresBeforeSuccess: int.MaxValue);
         var orchestrator = new MetricOrchestrator(dataAccess, failingTarget, NullLogger<MetricOrchestrator>.Instance);
 
         var success = await orchestrator.RunAsync();
 
         Assert.False(success);
+    }
+
+    [Fact]
+    public async Task RunAsync_LosesFailingSourceMetricsOnTransientOutage()
+    {
+        var handler = new FakeHttpHandler(
+            TestData.ResponsesFor("GitHub", "StackOverflow", "WorldBank"),
+            new Dictionary<string, int> { [TestData.FirstEndpoint("GitHub")] = 1 });
+        var config = TestData.ConfigFor("GitHub", "StackOverflow", "WorldBank");
+        var dataAccess = new DataAccess(config, NullLoggerFactory.Instance, handler);
+        var mockTarget = new MockTargetClient(NullLogger<MockTargetClient>.Instance);
+        var orchestrator = new MetricOrchestrator(dataAccess, mockTarget, NullLogger<MetricOrchestrator>.Instance);
+
+        var success = await orchestrator.RunAsync();
+
+        Assert.True(success);
+        // GitHub's first call fails and is never retried, so only StackOverflow (4) + WorldBank (3) arrive.
+        Assert.Equal(7, mockTarget.SentMetrics.Count);
     }
 
     [Fact]

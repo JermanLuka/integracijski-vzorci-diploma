@@ -36,7 +36,7 @@ public sealed class StackOverflowAdapter : IMetricSource
             return [];
         }
 
-        var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+        using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
         var source = new StackOverflowSource(http, accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
         return await source.FetchMetricsAsync(ct);
     }

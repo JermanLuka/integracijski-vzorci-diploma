@@ -39,8 +39,13 @@ public sealed class DataAccess
 
         try
         {
-            var source = new GitHubSource(CreateHttpClient(), token, _loggerFactory.CreateLogger<GitHubSource>());
+            using var http = CreateHttpClient();
+            var source = new GitHubSource(http, token, _loggerFactory.CreateLogger<GitHubSource>());
             return await source.FetchMetricsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch when (!_failFast)
         {
@@ -61,8 +66,13 @@ public sealed class DataAccess
 
         try
         {
-            var source = new StackOverflowSource(CreateHttpClient(), accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
+            using var http = CreateHttpClient();
+            var source = new StackOverflowSource(http, accessToken, apiKey, _loggerFactory.CreateLogger<StackOverflowSource>());
             return await source.FetchMetricsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch when (!_failFast)
         {
@@ -77,8 +87,13 @@ public sealed class DataAccess
 
         try
         {
-            var source = new PublicDataSource(CreateHttpClient(), countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
+            using var http = CreateHttpClient();
+            var source = new PublicDataSource(http, countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
             return await source.FetchMetricsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch when (!_failFast)
         {
@@ -94,8 +109,13 @@ public sealed class DataAccess
 
         try
         {
-            var source = new OpenMeteoSource(CreateHttpClient(), latitude, longitude, _loggerFactory.CreateLogger<OpenMeteoSource>());
+            using var http = CreateHttpClient();
+            var source = new OpenMeteoSource(http, latitude, longitude, _loggerFactory.CreateLogger<OpenMeteoSource>());
             return await source.FetchMetricsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch when (!_failFast)
         {

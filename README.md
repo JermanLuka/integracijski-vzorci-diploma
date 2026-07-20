@@ -50,7 +50,7 @@ All measurements run against `FakeHttpHandler` and `MockTargetClient` for determ
 
 ### Extensibility
 
-Measured by git diff when adding the 4th data source (OpenMeteo). Tracks files modified, new files, lines added, and whether core logic was changed.
+Computed by `Measurements/measure-extensibility.ps1` from the git diff of the commit that added the 4th data source (OpenMeteo). For each project it reports files modified, new files, lines added in new files vs. lines changed in existing files, and whether core logic was changed. Files whose only change is a comment are excluded; core files are an explicit list per architecture (Monolith: `DataAccess` + orchestrator, Hexagonal: `Core/`, Messaging: `MetricConsumer` + `FetchRetryPolicy`).
 
 ### Code Complexity
 
@@ -58,11 +58,19 @@ Computed using Visual Studio Code Metrics (View > Other Windows > Code Metrics).
 
 ### Performance
 
-`PerformanceRunner.cs` uses `Stopwatch` to measure each architecture over 50 iterations, computing mean and standard deviation in milliseconds.
+`PerformanceRunner.cs` uses `Stopwatch` to measure each architecture over 500 iterations. Pipeline construction happens outside the timed region, so only the execution of `RunAsync` is measured. Reported statistics are mean, standard deviation, median, and 95th percentile in milliseconds. Because sources are faked in memory, the numbers reflect pure architectural overhead rather than real network behavior. The monolith fetches sequentially while messaging producers run concurrently, so relative results would differ under real network latency.
 
 ### Fault Tolerance
 
-`FaultToleranceRunner.cs` simulates one source failing at a time and measures the percentage of metrics successfully delivered. The monolith is tested in two modes: graceful (exceptions caught) and fail-fast (exceptions propagate).
+`FaultToleranceRunner.cs` measures the percentage of metrics successfully delivered under two scenarios.
+
+**Scenario A (permanent outage):** one source is down for the entire run. Every implementation that catches errors per source delivers all remaining metrics, so this scenario does not differentiate the architectures.
+
+**Scenario B (transient outage):** one source rejects its first request and then recovers. Only the messaging implementation retries fetches (`FetchRetryPolicy`, up to 3 attempts with exponential backoff) and delivers 100%. The monolith and hexagonal implementations fetch once and lose the metrics of that source for the cycle. This asymmetry is deliberate: the retry mechanism is the measured difference (see H2).
+
+The monolith is additionally tested in a mode where exceptions propagate and the run crashes, labeled "Monolith (fail-fast)" in the results.
+
+Results from both scenarios and the other metrics are aggregated into `results/summary.csv`.
 
 ## Running
 

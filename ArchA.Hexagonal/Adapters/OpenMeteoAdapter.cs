@@ -28,7 +28,7 @@ public sealed class OpenMeteoAdapter : IMetricSource
     {
         var latitude = _config["OpenMeteo:Latitude"] ?? "46.05";
         var longitude = _config["OpenMeteo:Longitude"] ?? "14.51";
-        var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+        using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
         var source = new OpenMeteoSource(http, latitude, longitude, _loggerFactory.CreateLogger<OpenMeteoSource>());
         return await source.FetchMetricsAsync(ct);
     }

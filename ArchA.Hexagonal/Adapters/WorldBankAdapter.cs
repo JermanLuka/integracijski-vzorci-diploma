@@ -27,7 +27,7 @@ public sealed class WorldBankAdapter : IMetricSource
     public async Task<IReadOnlyList<Metric>> FetchAsync(CancellationToken ct = default)
     {
         var countryCode = _config["WorldBank:CountryCode"] ?? "SVN";
-        var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
+        using var http = _handler is not null ? new HttpClient(_handler, disposeHandler: false) : new HttpClient();
         var source = new PublicDataSource(http, countryCode, _loggerFactory.CreateLogger<PublicDataSource>());
         return await source.FetchMetricsAsync(ct);
     }
